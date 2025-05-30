@@ -1,0 +1,68 @@
+# To install deps from toml
+# -------------------------
+# > make install
+# -------------------------
+
+[build-system]
+requires = ["setuptools>=46.4.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exptbimanual"
+description = "Bimanual task replication of Schumacher et al 2018."
+version = "2025.5.28.1"
+authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
+license = {text = "GPLv3"}
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["cognitive science", "experiment", "pygame", "psychology"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",  # I'm developing in this version on Fedora 42
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "pandas",
+    "fastnumbers",
+    "rich",
+    "platformdirs",
+    "tomli",
+    "pygame",
+    "freesimpleguiqt",
+    # exptsys  # will be pulled out into its own module later
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/travisseymour/exptbimanual/issues"
+"Documentation" = "https://github.com/travisseymour/exptbimanual#readme"
+
+[project.optional-dependencies]
+# pytest black ruff build
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "build",
+]
+
+[project.gui-scripts]
+exptbimanual = "exptbimanual.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["exptbimanual"]
+namespaces = false
+
+# pull in any files in the resources folder for use with importlib.resources
+[tool.setuptools]
+include-package-data = true
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
+lint.ignore = ["F821", "F841", "E722"]  # undefined name, assigned but unused variable, bare except

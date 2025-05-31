@@ -1,6 +1,7 @@
 from importlib.resources import files, as_file
 from pathlib import Path
 
+
 def get_resource(*args: str) -> Path:
     """
     Constructs and returns the full absolute path to a resource within the resources folder.

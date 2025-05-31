@@ -36,6 +36,5 @@ except:
     __version__ = get_version_from_pyproject()
 
 
-
 if __name__ == "__main__":
     print(f"{__version__=}")

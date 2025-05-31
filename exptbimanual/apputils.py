@@ -53,9 +53,9 @@ def ospath(path_str: str) -> str:
         return path_str
 
 
-
 def is_numeric(value) -> bool:
     return isfloat(value)
+
 
 def ignore_warnings(f):
     # https://stackoverflow.com/questions/879173
@@ -69,31 +69,29 @@ def ignore_warnings(f):
     return inner
 
 
+def disable_pygame_announcement():
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
 
 # Function to determine the available display server
 def set_qt_platform():
     # Check if the operating system is Linux
-    if platform.system() == 'Linux':
-        if 'WAYLAND_DISPLAY' in os.environ:
-            os.environ['QT_QPA_PLATFORM'] = 'wayland'
+    if platform.system() == "Linux":
+        if "WAYLAND_DISPLAY" in os.environ:
+            os.environ["QT_QPA_PLATFORM"] = "wayland"
             print("Using Wayland as the display server.")
         else:
-            os.environ['QT_QPA_PLATFORM'] = 'xcb'
+            os.environ["QT_QPA_PLATFORM"] = "xcb"
             print("Using X11 (xcb) as the display server.")
-    elif platform.system() == 'Windows':
+    elif platform.system() == "Windows":
         # Windows typically does not require setting this
         pass
-    elif platform.system() == 'Darwin':  # macOS
+    elif platform.system() == "Darwin":  # macOS
         # macOS typically does not require setting this
         pass
     else:
         # Optionally handle other operating systems or set a default
-        os.environ['QT_QPA_PLATFORM'] = 'xcb'  # Default to X11 for non-Linux
-
-
-
-
-
+        os.environ["QT_QPA_PLATFORM"] = "xcb"  # Default to X11 for non-Linux
 
 
 def normalize_invisible_chars(text: str) -> str:
@@ -110,9 +108,7 @@ def normalize_invisible_chars(text: str) -> str:
     return text
 
 
-
-
 def stop_if_not_linux(app_name: str):
-    if OS != 'Linux':
+    if OS != "Linux":
         log.error(f'{app_name} Only Works on Linux Operating Systems, not "{OS}"')
         sys.exit()

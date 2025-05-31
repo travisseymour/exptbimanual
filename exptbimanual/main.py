@@ -27,51 +27,51 @@ from exptbimanual.propdict import PropDict
 from exptbimanual.resource import get_resource
 from exptbimanual.task_setup import get_parameters
 from exptbimanual.version import __version__
-from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform
+from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform, disable_pygame_announcement
 
 OS = platform.system()
+disable_pygame_announcement()
 set_qt_platform()
 
 # Set Task Options
 options: PropDict = PropDict(
-    {
-        'bg_color': (0, 0, 0),
-        'screen_size': (1024, 768),
-        'practice_blocks': 1,
-        'test_blocks': 1
-    }
+    {"bg_color": (0, 0, 0), "screen_size": (1024, 768), "practice_blocks": 1, "test_blocks": 1}
 )
 
 # Get Task Options From Experimenter
 
 
 # Preload Task Media
-building_files = [f'HH{i+1}BW.bmp' for i in range(6) ]
-face_files = [f'FF{i+1}BW.bmp' for i in range(6) ]
+building_files = [f"HH{i + 1}BW.bmp" for i in range(6)]
+face_files = [f"FF{i + 1}BW.bmp" for i in range(6)]
 media: PropDict = PropDict()
+
 
 def preload_experiment_media():
     global media
     for file in building_files:
-        media[Path(file).name] = pygame.image.load(get_resource('images', 'buildings', file)).convert_alpha()
+        media[Path(file).name] = pygame.image.load(get_resource("images", "buildings", file)).convert_alpha()
     for file in face_files:
-        media[Path(file).name] = pygame.image.load(get_resource('images', 'faces', file)).convert_alpha()
-    media['keyboard_kl'] = pygame.image.load(get_resource('images', 'response_box', 'keyboard_as_kl.png'))
-    media['keyboard_space'] = pygame.image.load(get_resource('images', 'response_box', 'keyboard_space.png'))
+        media[Path(file).name] = pygame.image.load(get_resource("images", "faces", file)).convert_alpha()
+    media["keyboard_kl"] = pygame.image.load(get_resource("images", "response_box", "keyboard_as_kl.png"))
+    media["keyboard_space"] = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
+    media["beep_high"] = pygame.mixer.Sound(get_resource("sounds", "beep-high.mp3"))
+    media["beep_low"] = pygame.mixer.Sound(get_resource("sounds", "beep-low.mp3"))
 
-    print(f'Successfully preloaded media:')
+    print("Successfully preloaded media:")
     print(list(media.to_dict().keys()))
+
 
 def main():
     global options
-    print(f'Bimanual Experiment Version {__version__} | {OS=} | {frozen()=}')
+    print(f"Bimanual Experiment Version {__version__} | {OS=} | {frozen()=}")
 
-    stop_if_not_linux('ExptBimanual')
+    stop_if_not_linux("ExptBimanual")
     parameters = get_parameters()
     options = options.combine(parameters)
     print(options)
 
-
+    pygame.mixer.init()
     pygame.init()
     screen = pygame.display.set_mode(options.screen_size)
 
@@ -86,7 +86,7 @@ def main():
     #                 wait for resp
     #                 show trial feedback
 
-    phase = ['independent', 'dependent']
+    phase = ["independent", "dependent"]
 
     # test instructions phase[0]
     # for block in num_blocks:
@@ -107,6 +107,7 @@ def main():
     #         show block feedback
 
     pygame.quit()
+    pygame.mixer.quit()
     sys.exit()
 
 

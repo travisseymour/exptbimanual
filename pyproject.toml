@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "exptbimanual"
 description = "Bimanual task replication of Schumacher et al 2018."
-version = "2025.5.28.1"
+version = "2025.5.31.1"
 authors = [{name = "Travis L. Seymour, PhD", email = "nogard@ucsc.edu"}]
 license = {text = "GPLv3"}
 readme = "README.md"

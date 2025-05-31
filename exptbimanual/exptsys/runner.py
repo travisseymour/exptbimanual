@@ -55,16 +55,18 @@ def run_loop(
         pygame.display.flip()  # push the frame to the display
 
         if duration and pygame.time.get_ticks() - start_time >= duration:
-            data.append(
-                {
-                    "func_name": f"{func_name}",
-                    f"{func_name}_key": "",
-                    f"{func_name}_start": func_start_time,
-                    f"{func_name}_stop": pygame.time.get_ticks(),
-                }
-            )
             break
 
         clock.tick(refresh_rate)
+
+    if not data:
+        data.append(
+            {
+                "func_name": f"{func_name}",
+                f"{func_name}_key": "",
+                f"{func_name}_start": func_start_time,
+                f"{func_name}_stop": pygame.time.get_ticks(),
+            }
+        )
 
     return data

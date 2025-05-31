@@ -36,7 +36,6 @@ def draw_image(screen: pygame.Surface, image: pygame.Surface, position: tuple, c
 
     screen.blit(image, rect)
 
-
 def draw_text(
     screen: pygame.Surface,
     text: str,
@@ -137,7 +136,9 @@ if __name__ == "__main__":
     pygame.display.flip()
 
     sound = pygame.mixer.Sound(get_resource("sounds", "beep-high.wav"))
-    image = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
+    keyboard_image = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
+    face_image = pygame.image.load(get_resource("images", "faces", "FF1BW.bmp"))
+    building_image = pygame.image.load(get_resource("images", "buildings", "HH1BW.bmp"))
 
     scratchpad: dict = {"screen1_played_sound": False}
 
@@ -156,7 +157,6 @@ if __name__ == "__main__":
             position=(screen_center[0], screen_size[1] - 150),
             color="lime",
             font=("Arial", 32),
-            center_on_position=True,
         )
 
         # test draw_multiline_text by writing some text at the top of the screen
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         )
 
         # test draw_image by showing an image in the middle of the screen
-        draw_image(screen=screen, image=image, position=screen_center, center_on_position=True)
+        draw_image(screen=screen, image=keyboard_image, position=screen_center)
 
         # test play_sound (as well as transient sounds) by setting a flag in the scratch dict
         # that allows only playing the sound once
@@ -181,8 +181,38 @@ if __name__ == "__main__":
 
         return data
 
-    data_screen1 = run_loop(screen, [draw_screen1(scratchpad)], duration=5000, wait_for_key=True)
-    print(f"{data_screen1=}")
+    @return_partial
+    def draw_screen2(scratch: dict) -> dict:
+        """
+        This is just a way to test responses
+        """
+
+        data = {}
+
+        # Response Instructions, made to blink every 500ms
+        draw_text(
+            screen=screen,
+            text="Press F, J or Both",
+            position=(screen_center[0], 200),
+            color="white",
+            font=("Arial", 32),
+            center_on_position=True,
+        )
+
+        # Show 2 Images
+        center_x, center_y = screen_center
+        image_offset_x = 150
+        draw_image(screen=screen, image=face_image, position=(center_x - image_offset_x, center_y))
+        draw_image(screen=screen, image=building_image, position=(center_x + image_offset_x, center_y))
+
+        return data
+
+    # These will actually show the screens defined above
+    task_screen1 = run_loop(screen, [draw_screen1(scratchpad)], duration=5000, wait_for_key=True)
+    task_screen2 = run_loop(screen, [draw_screen2(scratchpad)], duration=0, wait_for_key=True)
+
+    print(f"{task_screen1=}")
+    print(f"{task_screen2=}")
 
     pygame.quit()
     pygame.mixer.quit()

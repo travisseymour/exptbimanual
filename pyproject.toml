@@ -32,6 +32,7 @@ dependencies = [
     "tomli",
     "pygame",
     "freesimpleguiqt",
+    "evdev"
     # exptsys  # will be pulled out into its own module later
 ]
 

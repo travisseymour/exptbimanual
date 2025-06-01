@@ -8,6 +8,17 @@
 
 ### Installation
 
+**Setup User Account For Hi-resolution Mouse and Keyboard Input**
+
+Add user to the "input" group
+```bash
+sudo usermod -aG input $USER
+```
+
+__**IMPORTANT**__: Log out of your account and log back in for the new usermode privileges to be applied.
+
+**Install ExptBimanual**
+
 ```bash
 uv tool install git+https://github.com/travisseymour/exptbimanual.git
 ```

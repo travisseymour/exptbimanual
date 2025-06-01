@@ -36,6 +36,7 @@ def draw_image(screen: pygame.Surface, image: pygame.Surface, position: tuple, c
 
     screen.blit(image, rect)
 
+
 def draw_text(
     screen: pygame.Surface,
     text: str,

@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import List
 
 import pygame
 import threading
 from timeit import default_timer
-from queue import Queue
+from queue import Queue, Empty
 from evdev import InputDevice, ecodes, list_devices
 import rich
 
@@ -29,6 +30,65 @@ class InputRecord:
         )
 
 
+class InputEvents:
+    def __init__(self):
+        self._keyboard_responses: Queue[InputRecord] = Queue()
+        self._mouse_responses: Queue[InputRecord] = Queue()
+
+    def put(self, rec: InputRecord):
+        if rec.type is InputSource.keyboard:
+            self._keyboard_responses.put(rec)
+        else:
+            self._mouse_responses.put(rec)
+
+    def get(self, source: InputSource = InputSource.keyboard) -> InputRecord:
+        if source is InputSource.keyboard:
+            return self._keyboard_responses.get()
+        else:
+            return self._mouse_responses.get()
+
+    def has_keyboard_response(self) -> bool:
+        return not self._keyboard_responses.empty()
+
+    def has_mouse_response(self) -> bool:
+        return not self._mouse_responses.empty()
+
+    def keyboard_responses(self) -> List[InputRecord]:
+        """
+        Remove and return a *list* (in arrival order) of all keyboard records currently queued.
+        """
+        items: List[InputRecord] = []
+        while True:
+            try:
+                items.append(self._keyboard_responses.get_nowait())
+            except Empty:
+                break
+        return items
+
+    def mouse_responses(self) -> List[InputRecord]:
+        items: List[InputRecord] = []
+        while True:
+            try:
+                items.append(self._mouse_responses.get_nowait())
+            except Empty:
+                break
+        return items
+
+    def all_responses(self) -> List[InputRecord]:
+        items: List[InputRecord] = []
+        while True:
+            try:
+                items.append(self._keyboard_responses.get_nowait())
+            except Empty:
+                break
+        while True:
+            try:
+                items.append(self._mouse_responses.get_nowait())
+            except Empty:
+                break
+        return items
+
+
 # === Config ===
 DEBOUNCE_ENABLED = True
 DEBOUNCE_INTERVAL_MS = 150
@@ -48,7 +108,7 @@ else:
     debug_print = print_nothing
 
 
-input_events: Queue[InputRecord] = Queue()
+input_events: InputEvents = InputEvents()
 stop_event = threading.Event()
 
 
@@ -244,18 +304,17 @@ def main():
                     running = False
 
             # Drain any queued input_events
-            while not input_events.empty():
-                record: InputRecord = input_events.get()
-                # src, code, ts = input_events.get()
+            responses = input_events.all_responses()
+            for response in responses:
 
                 # If we see our shutdown marker, bail out
-                if record.value == "__EXIT__":
+                if response.value == "__EXIT__":
                     running = False
                     break
 
                 # Otherwise, this was a normal key-down event
-                debug_print(f"[MAIN] {record}")
-                event_log.append(record)
+                debug_print(f"[MAIN] {response}")
+                event_log.append(response)
 
             # Draw the last five events
             for i, record in enumerate(event_log[-5:]):

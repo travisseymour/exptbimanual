@@ -25,7 +25,7 @@ class InputRecord:
     def __repr__(self) -> str:
         return (
             f'InputRecord(type="{self.type}", device="{self.device}", '
-            f"{'key=' + str(self.value) if self.type is InputSource.keyboard else 'button=' + str(self.value)}, "
+            f"{'key=' + str(self.value) if self.type == InputSource.keyboard else 'button=' + str(self.value)}, "
             f"time={self.time:0.3f})"
         )
 
@@ -36,13 +36,17 @@ class InputEvents:
         self._mouse_responses: Queue[InputRecord] = Queue()
 
     def put(self, rec: InputRecord):
-        if rec.type is InputSource.keyboard:
+        if rec.type == InputSource.keyboard:
             self._keyboard_responses.put(rec)
         else:
             self._mouse_responses.put(rec)
 
     def get(self, source: InputSource = InputSource.keyboard) -> InputRecord:
-        if source is InputSource.keyboard:
+        """
+        InputEvents uses a queue.Queue as its data structure, so this .get()
+        method pops (i.e., consumes) an item and returns it
+        """
+        if source == InputSource.keyboard:
             return self._keyboard_responses.get()
         else:
             return self._mouse_responses.get()
@@ -55,7 +59,8 @@ class InputEvents:
 
     def keyboard_responses(self) -> List[InputRecord]:
         """
-        Remove and return a *list* (in arrival order) of all keyboard records currently queued.
+        Remove and return a list (in arrival order) of all keyboard records currently queued.
+        The returned items are removed (i.e., consumed) as they are collected.
         """
         items: List[InputRecord] = []
         while True:
@@ -66,6 +71,10 @@ class InputEvents:
         return items
 
     def mouse_responses(self) -> List[InputRecord]:
+        """
+        Remove and return a list (in arrival order) of all mouse records currently queued.
+        The returned items are removed (i.e., consumed) as they are collected.
+        """
         items: List[InputRecord] = []
         while True:
             try:
@@ -75,6 +84,10 @@ class InputEvents:
         return items
 
     def all_responses(self) -> List[InputRecord]:
+        """
+        Remove and return a list (in arrival order) of all records currently queued.
+        The returned items are removed (i.e., consumed) as they are collected.
+        """
         items: List[InputRecord] = []
         while True:
             try:
@@ -306,7 +319,6 @@ def main():
             # Drain any queued input_events
             responses = input_events.all_responses()
             for response in responses:
-
                 # If we see our shutdown marker, bail out
                 if response.value == "__EXIT__":
                     running = False

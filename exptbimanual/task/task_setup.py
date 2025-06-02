@@ -1,13 +1,35 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import FreeSimpleGUIQt as sg
+import pygame
 from fastnumbers import isfloat
 
 from exptbimanual.apputils import set_qt_platform
+from exptbimanual.resource import get_resource
+
+building_files = [f"HH{i + 1}BW.bmp" for i in range(6)]
+face_files = [f"FF{i + 1}BW.bmp" for i in range(6)]
+media = SimpleNamespace()
 
 options: SimpleNamespace = SimpleNamespace(
     bg_color="black", screen_size=(1024, 768), practice_blocks=1, test_blocks=1, keyboard_input=True, mouse_input=False
 )
+
+
+def preload_experiment_media():
+    global media
+    for file in building_files:
+        setattr(media, Path(file).name, pygame.image.load(get_resource("images", "buildings", file)).convert_alpha())
+    for file in face_files:
+        setattr(media, Path(file).name, pygame.image.load(get_resource("images", "faces", file)).convert_alpha())
+    media.keyboard_kl = pygame.image.load(get_resource("images", "response_box", "keyboard_as_kl.png"))
+    media.keyboard_space = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
+    media.beep_high = pygame.mixer.Sound(get_resource("sounds", "beep-high.wav"))
+    media.beep_low = pygame.mixer.Sound(get_resource("sounds", "beep-low.wav"))
+
+    print("Successfully preloaded media:")
+    print(vars(media))
 
 
 def get_parameters() -> dict:
@@ -19,7 +41,7 @@ def get_parameters() -> dict:
         [sg.Text("Participant ID", font=font), sg.Input(key="subid", default_text="0", enable_events=True, font=font)],
         [sg.Text("Session #", font=font), sg.Input(key="session", default_text="1", enable_events=True, font=font)],
         [sg.Text(" ")],
-        [sg.Button("Ok", key="Ok", disabled=False, font=font), sg.Button("Quit", font=font)],
+        [sg.Button("Ok", key="Ok", disabled=False, font=font, bind_return_key=True), sg.Button("Quit", font=font)],
     ]
 
     window = sg.Window("Bimanual Experiment Task Setup", layout, finalize=True)

@@ -27,12 +27,12 @@ import pygame
 from rich import print
 
 from exptbimanual.exptsys.response import find_devices, input_thread, stop_event
-from exptbimanual.task_setup import get_parameters
 from exptbimanual.version import __version__
 from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform
 
-import exptbimanual.task_setup as setup
-import exptbimanual.task_main
+import exptbimanual.task.task_setup as setup
+import exptbimanual.task.practice_instructions
+import exptbimanual.task.overview_instructions
 
 OS = platform.system()
 set_qt_platform()
@@ -45,7 +45,7 @@ def main():
 
     # Parameter Setup
     # ---------------
-    parameters = get_parameters()
+    parameters = setup.get_parameters()
     if not parameters:
         sys.exit()
 
@@ -83,8 +83,9 @@ def main():
 
         # TASK PROCESSING GOES HERE
         # =========================
-        exptbimanual.task_main.preload_experiment_media()
-        exptbimanual.task_main.task(screen)
+        exptbimanual.task.task_setup.preload_experiment_media()
+        exptbimanual.task.overview_instructions.run(screen)
+        exptbimanual.task.practice_instructions.run(screen)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Shutting Down.")

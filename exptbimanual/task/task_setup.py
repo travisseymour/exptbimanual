@@ -1,3 +1,21 @@
+"""
+This file is part of the exptbimanual source code.
+Copyright (C) 2025 Travis L. Seymour, PhD
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,16 +38,15 @@ options: SimpleNamespace = SimpleNamespace(
 def preload_experiment_media():
     global media
     for file in building_files:
-        setattr(media, Path(file).name, pygame.image.load(get_resource("images", "buildings", file)).convert_alpha())
+        setattr(media, Path(file).stem, pygame.image.load(get_resource("images", "buildings", file)).convert_alpha())
     for file in face_files:
-        setattr(media, Path(file).name, pygame.image.load(get_resource("images", "faces", file)).convert_alpha())
-    media.keyboard_kl = pygame.image.load(get_resource("images", "response_box", "keyboard_as_kl.png"))
-    media.keyboard_space = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
+        setattr(media, Path(file).stem, pygame.image.load(get_resource("images", "faces", file)).convert_alpha())
+
     media.beep_high = pygame.mixer.Sound(get_resource("sounds", "beep-high.wav"))
     media.beep_low = pygame.mixer.Sound(get_resource("sounds", "beep-low.wav"))
 
     print("Successfully preloaded media:")
-    print(vars(media))
+    print(list(vars(media).keys()))
 
 
 def get_parameters() -> dict:

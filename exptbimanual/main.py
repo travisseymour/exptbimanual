@@ -21,7 +21,6 @@ import sys
 import threading
 from types import SimpleNamespace
 
-import exptbimanual.exptsys.exptsys_setup  # call before importing pygame
 
 import pygame
 from rich import print
@@ -30,9 +29,7 @@ from exptbimanual.exptsys.response import find_devices, input_thread, stop_event
 from exptbimanual.version import __version__
 from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform
 
-import exptbimanual.task.task_setup as setup
-import exptbimanual.task.practice_instructions
-import exptbimanual.task.overview_instructions
+from exptbimanual.task import task_schedule, task_setup
 
 OS = platform.system()
 set_qt_platform()
@@ -45,20 +42,20 @@ def main():
 
     # Parameter Setup
     # ---------------
-    parameters = setup.get_parameters()
+    parameters = task_setup.get_parameters()
     if not parameters:
         sys.exit()
 
     # setup.options is a SimpleNamespace, parameters is a dict.
     # this expression create a merged dict out of both and then re-constitutes the SimpleNamespace
-    setup.options = SimpleNamespace(**(setup.options.__dict__ | parameters))
-    print(setup.options)
+    task_setup.options = SimpleNamespace(**(task_setup.options.__dict__ | parameters))
+    print(task_setup.options)
 
     # Setup Pygame
     # ------------
     pygame.mixer.init()
     pygame.init()
-    screen = pygame.display.set_mode(setup.options.screen_size)
+    screen = pygame.display.set_mode(task_setup.options.screen_size)
     pygame.display.set_caption("")
     clock = pygame.time.Clock()
 
@@ -66,7 +63,9 @@ def main():
     # ---------------------------
     # Query system for appropriate input devices
     input_threads = []
-    input_devices = find_devices(include_keyboards=setup.options.keyboard_input, include_mice=setup.options.mouse_input)
+    input_devices = find_devices(
+        include_keyboards=task_setup.options.keyboard_input, include_mice=task_setup.options.mouse_input
+    )
     # Announce input device list
     print("Found these EV_KEY devices:")
     for dev in input_devices:
@@ -81,11 +80,10 @@ def main():
         # hide mouse cursor, though will still track button presses if enabled in find_devices
         pygame.mouse.set_visible(False)
 
-        # TASK PROCESSING GOES HERE
+        # TASK PROCESSING STARTS HERE
         # =========================
-        exptbimanual.task.task_setup.preload_experiment_media()
-        exptbimanual.task.overview_instructions.run(screen)
-        exptbimanual.task.practice_instructions.run(screen)
+        task_setup.preload_experiment_media()
+        task_schedule.run(screen)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt: Shutting Down.")

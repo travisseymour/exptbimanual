@@ -1,11 +1,26 @@
+"""
+This file is part of the exptbimanual source code.
+Copyright (C) 2025 Travis L. Seymour, PhD
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from functools import partial, update_wrapper, lru_cache
 from typing import Callable
 
 
 import pygame
-
-from exptbimanual.exptsys.runner import run_loop
-from exptbimanual.resource import get_resource
 
 
 def return_partial(func: Callable) -> Callable:
@@ -116,161 +131,3 @@ def play_sound(sound: pygame.mixer.Sound, wait: bool = False, volume: float = 1.
         while elapsed < wait_ms and pygame.mixer.get_busy():
             pygame.time.delay(tick)
             elapsed += tick
-
-
-if __name__ == "__main__":
-    import pygame
-
-    """
-    Test of functions in this module
-    """
-
-    # Initialize mixer *before* display (safer for Linux audio backends)
-    pygame.mixer.init()
-    pygame.init()
-
-    screen_size: tuple[int, int] = (1024, 768)
-    screen_center: tuple[int, int] = (1024 // 2, 768 // 2)
-
-    screen = pygame.display.set_mode(screen_size)
-    pygame.display.set_caption("stimulus.py module test")
-
-    screen.fill("black")
-    pygame.display.flip()
-
-    sound = pygame.mixer.Sound(get_resource("sounds", "beep-high.wav"))
-    keyboard_image = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
-    face_image = pygame.image.load(get_resource("images", "faces", "FF1BW.bmp"))
-    building_image = pygame.image.load(get_resource("images", "buildings", "HH1BW.bmp"))
-
-    scratchpad: dict = {"screen1_played_sound": False}
-
-    @return_partial
-    def draw_intro_screen(scratch: dict) -> dict:
-        """
-        This is just a way to test additions or changes to these stimulus functions
-        """
-
-        data = {}
-
-        # test draw_text (as well as text flashing) by using the scratch dict to manage flashes
-        draw_text(
-            screen=screen,
-            text="Press Spacebar To Continue",
-            position=(screen_center[0], screen_size[1] - 150),
-            color="lime",
-            font=("Arial", 32),
-        )
-
-        # test draw_multiline_text by writing some text at the top of the screen
-        draw_multiline_text(
-            screen=screen,
-            text="Welcome to this test of the\nstimulus.py module stimulus\ndrawing functions.",
-            position=(screen_center[0], 100),
-            color="white",
-            font=("Arial", 32),
-            center_vertically=False,
-            center_horizontally=True,
-        )
-
-        # test draw_image by showing an image in the middle of the screen
-        draw_image(screen=screen, image=keyboard_image, position=screen_center)
-
-        # test play_sound (as well as transient sounds) by setting a flag in the scratch dict
-        # that allows only playing the sound once
-        if not scratch["screen1_played_sound"]:
-            play_sound(sound=sound, wait=True, volume=0.2)
-            scratch["screen1_played_sound"] = True
-
-        return data
-
-    @return_partial
-    def draw_stimulus_screen(scratch: dict) -> dict:
-        """
-        This is just a way to test responses
-        """
-
-        data = {}
-
-        # Response Instructions, made to blink every 500ms
-        draw_text(
-            screen=screen,
-            text="Press F, J or Both Within the Next 2 Seconds!",
-            position=(screen_center[0], 200),
-            color="white",
-            font=("Arial", 32),
-            center_on_position=True,
-        )
-
-        # Show 2 Images
-        center_x, center_y = screen_center
-        image_offset_x = 150
-        draw_image(screen=screen, image=face_image, position=(center_x - image_offset_x, center_y))
-        draw_image(screen=screen, image=building_image, position=(center_x + image_offset_x, center_y))
-
-        return data
-
-    @return_partial
-    def draw_fixation(scratch: dict) -> dict:
-        data = {}
-
-        draw_text(
-            screen=screen,
-            text="+",
-            position=screen_center,
-            color="white",
-            font=("Arial", 40),
-            center_on_position=True,
-        )
-
-        return data
-
-    @return_partial
-    def draw_end_screen(scratch: dict) -> dict:
-        data = {}
-
-        draw_text(
-            screen=screen,
-            text="Experiment Over - Thanks!",
-            position=screen_center,
-            color="lime",
-            font=("Arial", 50),
-            center_on_position=True,
-        )
-
-        return data
-
-    # These will actually show the screens defined above and collect any responses
-    task_screen1 = run_loop(
-        screen, draw_intro_screen(scratchpad), duration=5000, wait_for_responses=1, responses_allowed=["SPACE"]
-    )
-    task_screen2 = run_loop(screen, draw_fixation(scratchpad), duration=1000)
-    task_screen3 = run_loop(
-        screen,
-        draw_stimulus_screen(scratchpad),
-        duration=2000,
-        wait_for_responses=2,
-        responses_allowed=["F", "J"],
-        correct_response="F",
-    )
-    task_screen4 = run_loop(screen, draw_fixation(scratchpad), duration=1000)
-    task_screen5 = run_loop(
-        screen,
-        draw_stimulus_screen(scratchpad),
-        duration=2000,
-        wait_for_responses=2,
-        responses_allowed=["F", "J"],
-        correct_response="J",
-    )
-    task_screen6 = run_loop(screen, draw_end_screen(scratchpad), duration=1000, wait_for_responses=1)
-
-    # Testing -- show data from each screen
-    print(f"{task_screen1=}")
-    print(f"{task_screen2=}")
-    print(f"{task_screen3=}")
-    print(f"{task_screen4=}")
-    print(f"{task_screen5=}")
-    print(f"{task_screen6=}")
-
-    pygame.quit()
-    pygame.mixer.quit()

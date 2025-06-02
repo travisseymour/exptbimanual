@@ -19,9 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import pygame
 
 import exptbimanual.task.task_setup as setup
-from exptbimanual.exptsys.keyboardsurface import keyboard_surface
 from exptbimanual.exptsys.runner import run_loop
-from exptbimanual.exptsys.stimulus import return_partial, draw_image, draw_text
+from exptbimanual.exptsys.stimulus import return_partial, draw_text, draw_multiline_text
 
 # Other globals
 center_x, center_y = setup.options.screen_size
@@ -30,23 +29,21 @@ scratchpad: dict = {}
 
 
 @return_partial
-def draw_intro_screen(screen: pygame.Surface) -> dict:
+def draw_goodbye_screen(screen: pygame.Surface) -> dict:
     data = {}
 
     draw_text(
         screen=screen,
-        text="Welcome To Our Study!",
-        position=(screen_center[0], 150),
+        text="Experiment Complete!",
+        position=(screen_center[0], setup.options.screen_size[1] - 100),
         color="lime",
-        font=("Arial", 32),
+        font=("Arial", 38),
     )
 
-    draw_image(screen=screen, image=keyboard_surface("SPACE"), position=screen_center)
-
-    draw_text(
+    draw_multiline_text(
         screen=screen,
-        text="Press SPACEBAR To Begin",
-        position=(screen_center[0], setup.options.screen_size[1] - 150),
+        text="Thank you for participating in our study.\nWe appreciate your help in our research.",
+        position=(screen_center[0], 150),
         color="white",
         font=("Arial", 32),
     )
@@ -58,13 +55,13 @@ def run(screen: pygame.surface):
     screen.fill("black")
     pygame.display.flip()
 
-    oi_screen1_result = run_loop(
+    goodbye_screen_result = run_loop(
         screen,
-        draw_intro_screen(screen),
-        duration=5000,
+        draw_goodbye_screen(screen),
+        duration=30000,
         wait_for_responses=1,
         responses_allowed=["SPACE"],
     )
 
     # DEBUG
-    # print(f"{oi_screen1_result=}")
+    # print(f"{goodbye_screen_result=}")

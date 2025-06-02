@@ -16,6 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os
+import pygame
 
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+from exptbimanual.task import goodbye, practice, practice_instructions, overview_instructions
+
+
+def run(screen: pygame.Surface):
+    overview_instructions.run(screen)
+    practice_instructions.run(screen)
+    practice.run(screen)
+    goodbye.run(screen)

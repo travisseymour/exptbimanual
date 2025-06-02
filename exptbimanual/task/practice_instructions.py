@@ -118,7 +118,8 @@ def run(screen: pygame.surface):
         draw_screen3(screen),
         duration=0,
         wait_for_responses=2,
-        responses_allowed=list("AL"),
+        responses_allowed=list("ASKL"),
+        correct_response='AK'  # FIXME: should probably make this a list
     )
 
     # DEBUG

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import List
+from typing import List, Tuple
+
 
 import pygame
 import threading
@@ -15,11 +16,11 @@ class InputSource(StrEnum):
     mouse = "mouse"
 
 
-@dataclass
+@dataclass(frozen=True)
 class InputRecord:
     type: InputSource
     device: str
-    value: str | int
+    value: str
     time: float
 
     def __repr__(self) -> str:
@@ -32,56 +33,26 @@ class InputRecord:
 
 class InputEvents:
     def __init__(self):
-        self._keyboard_responses: Queue[InputRecord] = Queue()
-        self._mouse_responses: Queue[InputRecord] = Queue()
+        self._responses: Queue[InputRecord] = Queue()
 
     def put(self, rec: InputRecord):
-        if rec.type == InputSource.keyboard:
-            self._keyboard_responses.put(rec)
-        else:
-            self._mouse_responses.put(rec)
+        self._responses.put(rec)
 
-    def get(self, source: InputSource = InputSource.keyboard) -> InputRecord:
+    def get(self) -> InputRecord:
         """
         InputEvents uses a queue.Queue as its data structure, so this .get()
         method pops (i.e., consumes) an item and returns it
         """
-        if source == InputSource.keyboard:
-            return self._keyboard_responses.get()
-        else:
-            return self._mouse_responses.get()
+        return self._responses.get()
 
-    def has_keyboard_response(self) -> bool:
-        return not self._keyboard_responses.empty()
+    def qsize(self) -> int:
+        """
+        __Approximate__, value could change during this query
+        """
+        return self._responses.qsize()
 
-    def has_mouse_response(self) -> bool:
-        return not self._mouse_responses.empty()
-
-    def keyboard_responses(self) -> List[InputRecord]:
-        """
-        Remove and return a list (in arrival order) of all keyboard records currently queued.
-        The returned items are removed (i.e., consumed) as they are collected.
-        """
-        items: List[InputRecord] = []
-        while True:
-            try:
-                items.append(self._keyboard_responses.get_nowait())
-            except Empty:
-                break
-        return items
-
-    def mouse_responses(self) -> List[InputRecord]:
-        """
-        Remove and return a list (in arrival order) of all mouse records currently queued.
-        The returned items are removed (i.e., consumed) as they are collected.
-        """
-        items: List[InputRecord] = []
-        while True:
-            try:
-                items.append(self._mouse_responses.get_nowait())
-            except Empty:
-                break
-        return items
+    def has_responses(self) -> bool:
+        return not self._responses.empty()
 
     def all_responses(self) -> List[InputRecord]:
         """
@@ -91,15 +62,22 @@ class InputEvents:
         items: List[InputRecord] = []
         while True:
             try:
-                items.append(self._keyboard_responses.get_nowait())
-            except Empty:
-                break
-        while True:
-            try:
-                items.append(self._mouse_responses.get_nowait())
+                items.append(self._responses.get_nowait())
             except Empty:
                 break
         return items
+
+    def clear(self) -> None:
+        """
+        Remove everything currently in both keyboard and mouse queues.
+        Any items added after clear() starts may still end up in the queues.
+        """
+        # drain queue
+        while True:
+            try:
+                self._responses.get_nowait()
+            except Empty:
+                break
 
 
 # === Config ===
@@ -108,8 +86,22 @@ DEBOUNCE_INTERVAL_MS = 150
 DEBUG = False
 
 # Global filters (empty list = no filtering on that category)
-allowed_keys = ["A", "SPACE", "T"]  # e.g. ["A", "SPACE", "T"] maps to pygame's KEY_A, KEY_SPACE, and KEY_T
-allowed_buttons = [1, 2]  # e.g. [1, 2, 3] maps to evdev codes 272, 273, 274
+# e.g. ["A", "SPACE", "T"] maps to pygame's KEY_A, KEY_SPACE, and KEY_T,
+#      and ["1", "2", "3"] maps to evdev codes 272, 273, 274
+allowed_responses = ["A", "SPACE", "T", "1", "2"]
+
+
+def set_allowed_responses(key_names: List[str]) -> Tuple[str, ...]:
+    """
+    Sets globally allowed keyboard keys.
+    Returns a tuple of the list that was used for info purposes only
+    """
+    global allowed_responses
+    if not key_names:
+        allowed_responses = []
+    else:
+        allowed_responses = list(set(str(key_name).upper().removeprefix("KEY_") for key_name in set(key_names)))
+    return tuple(allowed_responses)
 
 
 def print_nothing(*args, **kwargs): ...
@@ -208,9 +200,9 @@ def input_thread(dev: InputDevice, stop_event: threading.Event):
 
     # Map raw evdev button codes to “button numbers” 1,2,3
     btn_map = {
-        ecodes.BTN_LEFT: 1,  # left button → 1
-        ecodes.BTN_RIGHT: 2,  # right button → 2
-        ecodes.BTN_MIDDLE: 3,  # middle button → 3
+        ecodes.BTN_LEFT: "1",  # left button → 1
+        ecodes.BTN_RIGHT: "2",  # right button → 2
+        ecodes.BTN_MIDDLE: "3",  # middle button → 3
     }
 
     debug_print(f"[THREAD] Starting thread for {dev.name} ({dev.path})")
@@ -247,16 +239,16 @@ def input_thread(dev: InputDevice, stop_event: threading.Event):
                     # 2) Determine if this is a mouse-button code
                     if event.code in btn_map:
                         button_number = btn_map[event.code]
-                        # If allowed_buttons is empty → no filter; otherwise only that list
-                        if (not allowed_buttons) or (button_number in allowed_buttons):
+                        # If allowed_responses is empty → no filter; otherwise only that list
+                        if (not allowed_responses) or (button_number in allowed_responses):
                             # We pass through the raw evdev code for the mouse button (e.g. 272/273/274)
-                            input_events.put(InputRecord(InputSource.mouse, dev.name, event.code - 271, now))
+                            input_events.put(InputRecord(InputSource.mouse, dev.name, str(event.code - 271), now))
                     else:
                         # Otherwise, assume it’s a “keyboard” key
                         # Strip off the "KEY_" prefix:
                         stripped = key_name.replace("KEY_", "", 1)
-                        # If allowed_keys is empty → no filter; otherwise only that list
-                        if (not allowed_keys) or (stripped in allowed_keys):
+                        # If allowed_responses is empty → no filter; otherwise only that list
+                        if (not allowed_responses) or (stripped in allowed_responses):
                             input_events.put(
                                 InputRecord(InputSource.keyboard, dev.name, str(key_name).removeprefix("KEY_"), now)
                             )
@@ -284,86 +276,85 @@ def input_thread(dev: InputDevice, stop_event: threading.Event):
         dev.close()
 
 
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode((1024, 768))
-    clock = pygame.time.Clock()
-    font = pygame.font.SysFont("Verdana", 18)
-    pygame.display.set_caption("Multi-Device Input Logger (Ctrl+X to Exit)")
-    pygame.mouse.set_visible(False)
-
-    devices = find_devices()
-    debug_print("Found these EV_KEY devices:")
-    for dev in devices:
-        debug_print(f" • {dev.path}  → {dev.name} (caps: {dev.capabilities()})")
-
-    threads = []
-    try:
-        # Spawn one thread per EV_KEY device
-        for dev in devices:
-            t = threading.Thread(target=input_thread, args=(dev, stop_event), daemon=True)
-            t.start()
-            threads.append((t, dev))
-
-        running = True
-        event_log = []
-
-        while running:
-            screen.fill((255, 255, 255))
-
-            # Let the user still close the window with the "X" button
-            for evt in pygame.event.get():
-                if evt.type == pygame.QUIT:
-                    running = False
-
-            # Drain any queued input_events
-            responses = input_events.all_responses()
-            for response in responses:
-                # If we see our shutdown marker, bail out
-                if response.value == "__EXIT__":
-                    running = False
-                    break
-
-                # Otherwise, this was a normal key-down event
-                debug_print(f"[MAIN] {response}")
-                event_log.append(response)
-
-            # Draw the last five events
-            for i, record in enumerate(event_log[-5:]):
-                txt = font.render(f"{record}", True, (0, 0, 0))
-                screen.blit(txt, (20, 20 + 30 * i))
-
-            pygame.display.flip()
-            clock.tick(60)
-
-    except KeyboardInterrupt:
-        debug_print("[MAIN] KeyboardInterrupt: shutting down.")
-
-    finally:
-        debug_print("[MAIN] Stopping threads...")
-
-        # unhide mouse
-        pygame.mouse.set_visible(True)
-
-        # change to a spinner/wait cursor
-        wait_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_WAIT)
-        pygame.mouse.set_cursor(wait_cursor)
-        cx = screen.get_width() // 2
-        cy = screen.get_height() // 2
-        pygame.mouse.set_pos((cx, cy))
-        pygame.display.update()  # force the cursor change to appear immediately
-
-        stop_event.set()
-        for t, dev in threads:
-            t.join(timeout=1.0)
-
-        # restore default mouse cursor
-        arrow_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_ARROW)
-        pygame.mouse.set_cursor(arrow_cursor)
-
-        pygame.quit()
-        debug_print("[MAIN] Exited cleanly.")
-
-
 if __name__ == "__main__":
-    main()
+
+    def response_module_test():
+        pygame.init()
+        screen = pygame.display.set_mode((1024, 768))
+        clock = pygame.time.Clock()
+        font = pygame.font.SysFont("Verdana", 18)
+        pygame.display.set_caption("Multi-Device Input Logger (Ctrl+X to Exit)")
+        pygame.mouse.set_visible(False)
+
+        devices = find_devices()
+        debug_print("Found these EV_KEY devices:")
+        for dev in devices:
+            debug_print(f" • {dev.path}  → {dev.name} (caps: {dev.capabilities()})")
+
+        threads = []
+        try:
+            # Spawn one thread per EV_KEY device
+            for dev in devices:
+                t = threading.Thread(target=input_thread, args=(dev, stop_event), daemon=True)
+                t.start()
+                threads.append((t, dev))
+
+            running = True
+            event_log = []
+
+            while running:
+                screen.fill((255, 255, 255))
+
+                # Let the user still close the window with the "X" button
+                for evt in pygame.event.get():
+                    if evt.type == pygame.QUIT:
+                        running = False
+
+                # Drain any queued input_events
+                responses = input_events.all_responses()
+                for response in responses:
+                    # If we see our shutdown marker, bail out
+                    if response.value == "__EXIT__":
+                        running = False
+                        break
+
+                    # Otherwise, this was a normal key-down event
+                    debug_print(f"[MAIN] {response}")
+                    event_log.append(response)
+
+                # Draw the last five events
+                for i, record in enumerate(event_log[-5:]):
+                    txt = font.render(f"{record}", True, (0, 0, 0))
+                    screen.blit(txt, (20, 20 + 30 * i))
+
+                pygame.display.flip()
+                clock.tick(60)
+
+        except KeyboardInterrupt:
+            debug_print("[MAIN] KeyboardInterrupt: shutting down.")
+
+            debug_print("[MAIN] Stopping threads...")
+
+            # unhide mouse
+            pygame.mouse.set_visible(True)
+
+            # change to a spinner/wait cursor
+            wait_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_WAIT)
+            pygame.mouse.set_cursor(wait_cursor)
+            cx = screen.get_width() // 2
+            cy = screen.get_height() // 2
+            pygame.mouse.set_pos((cx, cy))
+            pygame.display.update()  # force the cursor change to appear immediately
+
+            stop_event.set()
+            for t, dev in threads:
+                t.join(timeout=1.0)
+
+            # restore default mouse cursor
+            arrow_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_ARROW)
+            pygame.mouse.set_cursor(arrow_cursor)
+
+            pygame.quit()
+            debug_print("[MAIN] Exited cleanly.")
+
+    response_module_test()

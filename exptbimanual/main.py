@@ -18,96 +18,99 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import platform
 import sys
-from pathlib import Path
+import threading
+from types import SimpleNamespace
+
+import exptbimanual.exptsys.exptsys_setup  # call before importing pygame
 
 import pygame
 from rich import print
 
-from exptbimanual.propdict import PropDict
-from exptbimanual.resource import get_resource
+from exptbimanual.exptsys.response import find_devices, input_thread, stop_event
 from exptbimanual.task_setup import get_parameters
 from exptbimanual.version import __version__
-from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform, disable_pygame_announcement
+from exptbimanual.apputils import frozen, stop_if_not_linux, set_qt_platform
+
+import exptbimanual.task_setup as setup
+import exptbimanual.task_main
 
 OS = platform.system()
-disable_pygame_announcement()
 set_qt_platform()
-
-# Set Task Options
-options: PropDict = PropDict(
-    {"bg_color": (0, 0, 0), "screen_size": (1024, 768), "practice_blocks": 1, "test_blocks": 1}
-)
-
-# Get Task Options From Experimenter
-
-
-# Preload Task Media
-building_files = [f"HH{i + 1}BW.bmp" for i in range(6)]
-face_files = [f"FF{i + 1}BW.bmp" for i in range(6)]
-media: PropDict = PropDict()
-
-
-def preload_experiment_media():
-    global media
-    for file in building_files:
-        media[Path(file).name] = pygame.image.load(get_resource("images", "buildings", file)).convert_alpha()
-    for file in face_files:
-        media[Path(file).name] = pygame.image.load(get_resource("images", "faces", file)).convert_alpha()
-    media["keyboard_kl"] = pygame.image.load(get_resource("images", "response_box", "keyboard_as_kl.png"))
-    media["keyboard_space"] = pygame.image.load(get_resource("images", "response_box", "keyboard_space.png"))
-    media["beep_high"] = pygame.mixer.Sound(get_resource("sounds", "beep-high.mp3"))
-    media["beep_low"] = pygame.mixer.Sound(get_resource("sounds", "beep-low.mp3"))
-
-    print("Successfully preloaded media:")
-    print(list(media.to_dict().keys()))
 
 
 def main():
-    global options
     print(f"Bimanual Experiment Version {__version__} | {OS=} | {frozen()=}")
 
     stop_if_not_linux("ExptBimanual")
-    parameters = get_parameters()
-    options = options.combine(parameters)
-    print(options)
 
+    # Parameter Setup
+    # ---------------
+    parameters = get_parameters()
+    if not parameters:
+        sys.exit()
+
+    # setup.options is a SimpleNamespace, parameters is a dict.
+    # this expression create a merged dict out of both and then re-constitutes the SimpleNamespace
+    setup.options = SimpleNamespace(**(setup.options.__dict__ | parameters))
+    print(setup.options)
+
+    # Setup Pygame
+    # ------------
     pygame.mixer.init()
     pygame.init()
-    screen = pygame.display.set_mode(options.screen_size)
+    screen = pygame.display.set_mode(setup.options.screen_size)
+    pygame.display.set_caption("")
+    clock = pygame.time.Clock()
 
-    preload_experiment_media()
+    # setup input device handling
+    # ---------------------------
+    # Query system for appropriate input devices
+    input_threads = []
+    input_devices = find_devices(include_keyboards=setup.options.keyboard_input, include_mice=setup.options.mouse_input)
+    # Announce input device list
+    print("Found these EV_KEY devices:")
+    for dev in input_devices:
+        print(f" • {dev.path}  → {dev.name}")
+    # Spawn one thread per input device
+    for dev in input_devices:
+        t = threading.Thread(target=input_thread, args=(dev, stop_event), daemon=True)
+        t.start()
+        input_threads.append((t, dev))
 
-    # practice instructions
-    # for block in num_blocks:
-    #     run practice block
-    #         for trial in num_trials:
-    #             run_practice_trial
-    #                 show stim
-    #                 wait for resp
-    #                 show trial feedback
+    try:
+        # hide mouse cursor, though will still track button presses if enabled in find_devices
+        pygame.mouse.set_visible(False)
 
-    phase = ["independent", "dependent"]
+        # TASK PROCESSING GOES HERE
+        # =========================
+        exptbimanual.task_main.preload_experiment_media()
+        exptbimanual.task_main.task(screen)
 
-    # test instructions phase[0]
-    # for block in num_blocks:
-    #     run test block
-    #         for trial in num_trials:
-    #             run_test_trial
-    #                 show stim
-    #                 wait for resp
-    #         show block feedback
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt: Shutting Down.")
+    finally:
+        # indicate waiting state using cursor
+        pygame.mouse.set_visible(True)
+        wait_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_WAIT)
+        pygame.mouse.set_cursor(wait_cursor)
+        cx = screen.get_width() // 2
+        cy = screen.get_height() // 2
+        pygame.mouse.set_pos((cx, cy))
+        pygame.display.update()  # force the cursor change to appear immediately
 
-    # test instructions phase[1]
-    # for block in num_blocks:
-    #     run test block
-    #         for trial in num_trials:
-    #             run_test_trial
-    #                 show stim
-    #                 wait for resp
-    #         show block feedback
+        print("Stopping input threads...")
+        stop_event.set()
+        for t, dev in input_threads:
+            t.join(timeout=1.0)
 
-    pygame.quit()
-    pygame.mixer.quit()
+        # restore default mouse cursor
+        arrow_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_ARROW)
+        pygame.mouse.set_cursor(arrow_cursor)
+
+        # shutdown pygame
+        pygame.quit()
+        pygame.mixer.quit()
+
     sys.exit()
 
 

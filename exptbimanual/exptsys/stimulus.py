@@ -1,5 +1,7 @@
 from functools import partial, update_wrapper, lru_cache
 from typing import Callable
+
+
 import pygame
 
 from exptbimanual.exptsys.runner import run_loop
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     import pygame
 
     """
-    Quick Test of functions in this module
+    Test of functions in this module
     """
 
     # Initialize mixer *before* display (safer for Linux audio backends)
@@ -144,7 +146,7 @@ if __name__ == "__main__":
     scratchpad: dict = {"screen1_played_sound": False}
 
     @return_partial
-    def draw_screen1(scratch: dict) -> dict:
+    def draw_intro_screen(scratch: dict) -> dict:
         """
         This is just a way to test additions or changes to these stimulus functions
         """
@@ -183,7 +185,7 @@ if __name__ == "__main__":
         return data
 
     @return_partial
-    def draw_screen2(scratch: dict) -> dict:
+    def draw_stimulus_screen(scratch: dict) -> dict:
         """
         This is just a way to test responses
         """
@@ -193,7 +195,7 @@ if __name__ == "__main__":
         # Response Instructions, made to blink every 500ms
         draw_text(
             screen=screen,
-            text="Press F, J or Both",
+            text="Press F, J or Both Within the Next 2 Seconds!",
             position=(screen_center[0], 200),
             color="white",
             font=("Arial", 32),
@@ -208,12 +210,67 @@ if __name__ == "__main__":
 
         return data
 
-    # These will actually show the screens defined above
-    task_screen1 = run_loop(screen, [draw_screen1(scratchpad)], duration=5000, wait_for_key=True)
-    task_screen2 = run_loop(screen, [draw_screen2(scratchpad)], duration=0, wait_for_key=True)
+    @return_partial
+    def draw_fixation(scratch: dict) -> dict:
+        data = {}
 
+        draw_text(
+            screen=screen,
+            text="+",
+            position=screen_center,
+            color="white",
+            font=("Arial", 40),
+            center_on_position=True,
+        )
+
+        return data
+
+    @return_partial
+    def draw_end_screen(scratch: dict) -> dict:
+        data = {}
+
+        draw_text(
+            screen=screen,
+            text="Experiment Over - Thanks!",
+            position=screen_center,
+            color="lime",
+            font=("Arial", 50),
+            center_on_position=True,
+        )
+
+        return data
+
+    # These will actually show the screens defined above and collect any responses
+    task_screen1 = run_loop(
+        screen, draw_intro_screen(scratchpad), duration=5000, wait_for_responses=1, responses_allowed=["SPACE"]
+    )
+    task_screen2 = run_loop(screen, draw_fixation(scratchpad), duration=1000)
+    task_screen3 = run_loop(
+        screen,
+        draw_stimulus_screen(scratchpad),
+        duration=2000,
+        wait_for_responses=2,
+        responses_allowed=["F", "J"],
+        correct_response="F",
+    )
+    task_screen4 = run_loop(screen, draw_fixation(scratchpad), duration=1000)
+    task_screen5 = run_loop(
+        screen,
+        draw_stimulus_screen(scratchpad),
+        duration=2000,
+        wait_for_responses=2,
+        responses_allowed=["F", "J"],
+        correct_response="J",
+    )
+    task_screen6 = run_loop(screen, draw_end_screen(scratchpad), duration=1000, wait_for_responses=1)
+
+    # Testing -- show data from each screen
     print(f"{task_screen1=}")
     print(f"{task_screen2=}")
+    print(f"{task_screen3=}")
+    print(f"{task_screen4=}")
+    print(f"{task_screen5=}")
+    print(f"{task_screen6=}")
 
     pygame.quit()
     pygame.mixer.quit()

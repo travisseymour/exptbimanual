@@ -1,12 +1,19 @@
+from types import SimpleNamespace
+
 import FreeSimpleGUIQt as sg
 from fastnumbers import isfloat
 
 from exptbimanual.apputils import set_qt_platform
 
-sg.Text()
+options: SimpleNamespace = SimpleNamespace(
+    bg_color="black", screen_size=(1024, 768), practice_blocks=1, test_blocks=1, keyboard_input=True, mouse_input=False
+)
 
 
 def get_parameters() -> dict:
+    """
+    A task specific dialog to obtain whatever session parameters are needed
+    """
     font = ("Arial", 14)
     layout = [
         [sg.Text("Participant ID", font=font), sg.Input(key="subid", default_text="0", enable_events=True, font=font)],
@@ -59,5 +66,6 @@ def get_parameters() -> dict:
 
 
 if __name__ == "__main__":
+    # testing
     set_qt_platform()
     print(get_parameters())
